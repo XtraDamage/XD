@@ -1,92 +1,1203 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" class=""> 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>XtraDamage</title>
+    <title>XtraDamageHub</title>
     <!-- Подключаем Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Подключаем шрифт Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         /* Применяем шрифт Inter ко всему сайту */
         body {
             font-family: 'Inter', sans-serif;
         }
-    </style>
-</head>
-<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen flex items-center justify-center p-4">
+        /* Скрываем скроллбар для модального окна, но оставляем прокрутку */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
 
-    <!-- Основной контейнер -->
-    <div class="bg-white dark:bg-gray-800 shadow-xl rounded-2xl w-full max-w-md mx-auto p-6 md:p-8">
+        /* --- СТИЛИ ДЛЯ МИНИ-ИГРЫ --- */
+        #rhythmGameContainer #arrow {
+            animation: moveArrow 2s ease-in-out infinite alternate;
+            width: 20px;
+        }
+
+        @keyframes moveArrow {
+            from {
+                left: 0;
+            }
+            to {
+                left: calc(100% - 20px);
+            }
+        }
+
+        #rhythmGameContainer #target {
+            transition: left 0.3s ease-in-out, width 0.3s ease-in-out;
+        }
+        /* --- КОНЕЦ СТИЛЕЙ ДЛЯ МИНИ-ИГРЫ --- */
+
+
+        /* --- СТИЛИ ДЛЯ СВОРАЧИВАНИЯ МОДАЛЬНОГО ОКНА --- */
         
-        <!-- Шапка профиля -->
-        <header class="flex flex-col items-center mb-8">
-            <!-- Плейсхолдер для аватара -->
-            <div class="w-24 h-24 rounded-full bg-gray-300 dark:bg-gray-700 mb-4 flex items-center justify-center overflow-hidden">
-                <!-- Ты можешь заменить это на img-тег со ссылкой на твой аватар -->
-                <img src="https://tr.rbxcdn.com/30DAY-AvatarHeadshot-D4B6EEAB999F7C360C8D3158C382E29B-Png/150/150/AvatarHeadshot/Webp/noFilter" alt="Лого XtraDamage">
+        #modalContentWrapper {
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #modalContentWrapper.modal-minimized {
+            transform: translateY(calc(100% - 120px));
+        }
+        
+        @media (min-width: 768px) {
+            #modalContentWrapper.modal-minimized {
+                transform: translateY(0); 
+                height: 120px; 
+                max-height: 120px;
+            }
+            #modalContentWrapper.modal-minimized #modalMainContent,
+            #modalContentWrapper.modal-minimized #rhythmGameContainer {
+                display: none;
+            }
+            #modalContentWrapper.modal-minimized #modalBottomBar {
+                display: none;
+            }
+        }
+
+        /* --- Анимация для полосы рейтинга --- */
+        #modalRatingBar {
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* --- Стили для NFT карточки --- */
+        .nft-card {
+            background-color: #374151; /* bg-gray-700 */
+            border-radius: 0.5rem; /* rounded-lg */
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-lg */
+            padding: 0.5rem; /* p-2 */
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+        .nft-card:hover {
+            transform: scale(1.05);
+        }
+        .dark .nft-card {
+            background-color: #1f2937; /* dark:bg-gray-800 */
+            border: 1px solid #374151; /* dark:border-gray-700 */
+        }
+
+
+    </style>
+    
+    <script>
+        // Управление темой (оставляем для корректной работы dark mode)
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark')
+        } else {
+          document.documentElement.classList.remove('dark')
+        }
+    </script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen flex items-center justify-center p-4 transition-colors duration-200 overflow-hidden">
+
+    <!-- ========================================== -->
+    <!-- НОВЫЙ БЛОК: Модальное окно Входа (Регистрации) -->
+    <!-- ========================================== -->
+    <div id="loginModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 hidden">
+        <div class="absolute inset-0 bg-gray-900/90 backdrop-blur-md"></div>
+        <div class="bg-white dark:bg-gray-800 shadow-xl rounded-2xl w-full max-w-sm mx-auto p-6 md:p-8 z-10">
+            <h2 class="text-2xl font-bold text-center mb-6 dark:text-white">Вход</h2>
+            <p class="text-center text-gray-600 dark:text-gray-400 mb-6">Введите свой никнейм Roblox для входа или создания профиля.</p>
+            
+            <div class="space-y-4">
+                <div>
+                    <label for="robloxUsername" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Никнейм Roblox</label>
+                    <input type="text" id="robloxUsername" class="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 border rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Например, Xtra_Damage">
+                </div>
+                <button id="loginButton" onclick="handleLogin()" class="w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-5 rounded-lg transition-colors duration-200 shadow-md">
+                    Войти
+                </button>
+                <p id="loginMessage" class="text-center text-sm h-5"></p>
             </div>
-            <h1 class="text-2xl font-bold text-center">Xtra_Damage</h1>
-            <p class="text-md text-gray-600 dark:text-gray-400 text-center mt-1">@Xtra_Damage</p>
+        </div>
+    </div>
+    
+    <!-- ========================================== -->
+    <!-- НОВЫЙ БЛОК: Модальное окно предпросмотра NFT -->
+    <!-- ========================================== -->
+    <div id="nftPreviewModal" class="fixed inset-0 z-[60] hidden p-4" onclick="closeNftPreview()">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-300"></div>
+
+        <!-- Контейнер для центрирования -->
+        <div class="flex items-center justify-center min-h-full">
+            <div class="bg-white dark:bg-gray-800 w-full max-w-lg rounded-2xl shadow-xl p-4 md:p-6 relative" onclick="event.stopPropagation()">
+                <!-- Кнопка закрытия -->
+                <button onclick="closeNftPreview()" class="absolute top-3 right-3 p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition text-gray-800 dark:text-white z-10">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+
+                <!-- Контент предпросмотра -->
+                <h3 class="text-xl font-bold mb-4 dark:text-white">Предпросмотр NFT</h3>
+                
+                <!-- Контейнер для SVG -->
+                <div id="previewSvgContainer" class="w-full aspect-square rounded-lg overflow-hidden bg-gray-900 border border-gray-700 mb-4">
+                    <!-- SVG будет вставлен сюда -->
+                </div>
+                
+                <!-- ID и Кнопка удаления -->
+                <p id="previewNftId" class="text-xs text-gray-500 dark:text-gray-400 mb-4 truncate">ID: ...</p>
+                <button id="deleteNftButton" onclick="deleteNFT()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-5 rounded-lg transition-colors duration-200 shadow-md">
+                    Удалить NFT
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- Основной контейнер профиля (ИЗМЕНЕН) -->
+    <!-- ========================================== -->
+    <div id="profileContainer" class="bg-white dark:bg-gray-800 shadow-xl rounded-2xl w-full max-w-md mx-auto p-6 md:p-8 z-10 relative hidden">
+        
+        <!-- Шапка профиля (ИЗМЕНЕНА) -->
+        <header class="flex flex-col items-center mb-6">
+            <div class="w-24 h-24 rounded-full bg-gray-300 dark:bg-gray-700 mb-4 flex items-center justify-center overflow-hidden border-4 border-white dark:border-gray-700 shadow-lg">
+                <!-- Аватарка теперь загружается динамически -->
+                <img id="profileAvatar" src="https://placehold.co/150x150/374151/E5E7EB?text=...&font=inter" alt="Аватар" class="w-full h-full object-cover">
+            </div>
+            <!-- Имя пользователя загружается динамически -->
+            <h1 id="profileTitle" class="text-2xl font-bold text-center dark:text-white">...</h1>
+            <p id="profileUsername" class="text-md text-gray-600 dark:text-gray-400 text-center mt-1">@...</p>
         </header>
+
+        <!-- Отображение общего счета и Кнопка Выхода -->
+        <div class="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg text-center mb-6 flex items-center justify-between">
+            <span id="totalScoreValue" class="font-bold text-lg text-gray-900 dark:text-white">Đoolcoin: 0</span>
+            <button onclick="handleLogout()" class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">Выйти</button>
+        </div>
 
         <!-- Список ссылок на игры -->
         <div class="space-y-4">
-
-            <!-- Пример 1: Игра 1 -->
+            <!-- (Кнопки игр без изменений) -->
+            <!-- Игра 1: ALONE -->
             <div class="flex items-center space-x-4">
-                <!-- Плейсхолдер логотипа игры -->
-                <div class="w-16 h-16 rounded-lg bg-gray-200 dark:bg-gray-700 flex-shrink-0 flex items-center justify-center text-xs text-gray-500 dark:text-gray-400">
-                    <img src="https://tr.rbxcdn.com/180DAY-3f44115ea3120d2fa304e109bf14655b/256/256/Image/Webp/noFilter" alt="Лого Игры 1" class="w-16 h-16 rounded-lg object-cover">
+                <div class="w-16 h-16 rounded-lg bg-gray-200 dark:bg-gray-700 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                    <img src="https://tr.rbxcdn.com/180DAY-3f44115ea3120d2fa304e109bf14655b/256/256/Image/Webp/noFilter" alt="Лого ALONE" class="w-full h-full object-cover">
                 </div>
-                <!-- Кнопка-ссылка -->
-                <a href="https://www.roblox.com/games/127865574897839/ALONE-Demo?gameSetTypeId=100000003&homePageSessionInfo=27caa654-8612-4d37-920d-922cb2f83521&isAd=false&numberOfLoadedTiles=15&page=homePage&placeId=127865574897839&playContext=homePage&position=0&positionInRow=0&rowOnPage=1&sortPos=1&universeId=9076764486" target="_blank" rel="noopener noreferrer" class="w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-5 rounded-lg transition-colors duration-200 shadow-md">
+                <button onclick="openGameModal(game1Data)" 
+                        class="w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-5 rounded-lg transition-colors duration-200 shadow-md cursor-pointer hover:scale-[1.02] active:scale-[0.98]">
                     ALONE
-                </a>
+                </button>
             </div>
 
-            <!-- Пример 2: Игра 2 -->
+            <!-- Игра 2: Untitled Game -->
             <div class="flex items-center space-x-4">
-                <!-- Плейсхолдер логотипа игры -->
-                <div class="w-16 h-16 rounded-lg bg-gray-200 dark:bg-gray-700 flex-shrink-0 flex items-center justify-center text-xs text-gray-500 dark:text-gray-400">
-                    <img src="https://tr.rbxcdn.com/180DAY-2128aca4b7a6d89c113459092bf5b66e/150/150/Image/Webp/noFilter" alt="Лого Игры 2" class="w-16 h-16 rounded-lg object-cover">
+                <div class="w-16 h-16 rounded-lg bg-gray-200 dark:bg-gray-700 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                    <img src="https://tr.rbxcdn.com/180DAY-2128aca4b7a6d89c113459092bf5b66e/150/150/Image/Webp/noFilter" alt="Лого Untitled Game" class="w-full h-full object-cover">
                 </div>
-                <!-- Кнопка-ссылка -->
-                <a href="https://www.roblox.com/games/97857991921270/Untitled-Game" target="_blank" rel="noopener noreferrer" class="w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-5 rounded-lg transition-colors duration-200 shadow-md">
+                <button onclick="openGameModal(game2Data)" 
+                        class="w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-5 rounded-lg transition-colors duration-200 shadow-md cursor-pointer hover:scale-[1.02] active:scale-[0.98]">
                     Untitled Game
-                </a>
-            </div>
-
-            <!-- Пример 3: Игра 3 -->
-            <div class="flex items-center space-x-4">
-                <!-- Плейсхолдер логотипа игры -->
-                <div class="w-16 h-16 rounded-lg bg-gray-200 dark:bg-gray-700 flex-shrink-0 flex items-center justify-center text-xs text-gray-500 dark:text-gray-400">
-                    <img src="https://tr.rbxcdn.com/180DAY-63f689710eca7811deddbf79a6f0145e/352/352/Image/Png/noFilter" alt="Лого Игры 3" class="w-16 h-16 rounded-lg object-cover">
-                </div>
-                <!-- Кнопка-ссылка -->
-                <a href="https://www.roblox.com/games/120103458034377/Anonymity-v-2-0" target="_blank" rel="noopener noreferrer" class="w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-5 rounded-lg transition-colors duration-200 shadow-md">
-                    Anonymity
-                </a>
+                </button>
             </div>
             
-            <!-- Пример 4: Другая ссылка -->
+            <!-- Миниигра "Ловец Ритма" -->
             <div class="flex items-center space-x-4">
-                <!-- Плейсхолдер логотипа -->
-                <div class="w-16 h-16 rounded-lg bg-gray-200 dark:bg-gray-700 flex-shrink-0 flex items-center justify-center text-xs text-gray-500 dark:text-gray-400">
-                     <img src="https://cdn4.telesco.pe/file/oZTdd6Ky407IgT91XKk-Q0D7BZlVFMAoITP0zGlH-pRX5a4835HYArJTxW7UpZ0CbTXQ_yaHvEIP4zmNC1sZXoHUEo_FftwUsDCoqf1bDo2Jw1a1Fz47XmmhSr0srgCO8x7cjP9AWQE96660jbPk6wXB6QhE3tvhZHdAtzSnfFTex7nQ0nvAXROelsLRtkWChHWwdhobD1CnigAqbhqy2AUC_7iTLRaEs8gRXZx-MO05baqAxs9Kewa0spLfUR4TJ-jKcpkGufxWTTOxqoYWlASxLJ0FslOiHK6Y4qMwk6OsgPXp8PtIQQ55wF5FPuK1PwpLKHKd-ziRiG12da-sYA.jpg" alt="Лого тг" class="w-16 h-16 rounded-lg object-cover">
+                <div class="w-16 h-16 rounded-lg bg-gray-200 dark:bg-gray-700 flex-shrink-0 flex items-center justify-center overflow-hidden p-3">
+                    <img src="https://raw.githubusercontent.com/XtraDamage/XD/refs/heads/main/%D0%91%D0%B5%D0%B7%20%D0%BD%D0%B0%D0%B7%D0%B2%D0%B0%D0%BD%D0%B8%D1%8F135_20251121094933.png" alt="Лого Untitled Game" class="w-full h-full object-cover">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.002 1.93l-6.363 3.692a2.25 2.25 0 01-2.27 0l-6.364-3.692A2.25 2.25 0 013 16.303V8.697a2.25 2.25 0 011.002-1.93l6.363-3.692a2.25 2.25 0 012.27 0l6.364 3.692A2.25 2.25 0 0121 8.697v1.05M12 18.5v-5.5m0 0l-3-1.732m3 1.732l3-1.732" />
+                    </svg>
                 </div>
-                <!-- Кнопка-ссылка -->
-                <a href="https://t.me/Xtra_Damage" target="_blank" rel="noopener noreferrer" class="w-full text-center bg-gray-700 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-500 text-white font-semibold py-3 px-5 rounded-lg transition-colors duration-200 shadow-md">
+                <button onclick="openGameModal(rhythmGameData)" 
+                        class="w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-5 rounded-lg transition-colors duration-200 shadow-md cursor-pointer hover:scale-[1.02] active:scale-[0.98]">
+                    Doolcoin farm
+                </button>
+            </div>
+
+            <!-- Ссылка на ТГ -->
+            <div class="flex items-center space-x-4">
+                <div class="w-16 h-16 rounded-lg bg-gray-200 dark:bg-gray-700 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                     <img src="https://avatars.mds.yandex.net/i?id=457e82e4f7885c1fbf095c02fb3a2fad3a9e73e6-9846375-images-thumbs&n=13" alt="Лого ТГ" class="w-full h-full object-cover">
+                </div>
+                <a href="https://t.me/Xtra_Damage" target="_blank" rel="noopener noreferrer" class="w-full text-center bg-gray-700 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-500 text-white font-semibold py-3 px-5 rounded-lg transition-colors duration-200 shadow-md hover:scale-[1.02] active:scale-[0.98]">
                     Мой ТГ Канал
                 </a>
             </div>
-
         </div>
-
     </div>
 
+    <!-- ========================================== -->
+    <!-- МОДАЛЬНОЕ ОКНО ПРЕДПРОСМОТРА (Игры) -->
+    <!-- ========================================== -->
+    <div id="previewModal" class="fixed inset-0 z-50 hidden" onclick="closeGameModal()">
+        <!-- (Содержимое без изменений, кроме контейнера игры) -->
+        <div class="absolute inset-0 bg-black/70 dark:bg-black/90 backdrop-blur-sm transition-opacity duration-300"></div>
+        <div class="absolute inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center pointer-events-none">
+            <div id="modalContentWrapper" class="bg-white dark:bg-[#1b1d24] text-gray-900 dark:text-white w-full h-[90vh] md:h-auto md:max-h-[85vh] md:max-w-sm md:rounded-xl flex flex-col pointer-events-auto overflow-hidden rounded-t-2xl shadow-2xl animate-slide-up md:animate-fade-in" onclick="event.stopPropagation()">
+                
+                <div id="modalHandle" onclick="toggleModalHeight()" class="w-full py-3 md:py-2 bg-white dark:bg-[#1b1d24] z-10 flex-shrink-0 cursor-grab active:cursor-grabbing md:cursor-pointer group">
+                </div>
+
+                <div class="flex items-center justify-between px-4 pb-2 flex-shrink-0">
+                    <div class="w-8"></div>
+                    <button onclick="closeGameModal()" class="p-2 -mr-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition text-gray-800 dark:text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- 1. Скроллящаяся область контента (Обычное превью) -->
+                <div id="modalMainContent" class="flex-1 overflow-y-auto no-scrollbar pb-24">
+                    
+                    <div class="w-full aspect-video bg-black mb-4 relative">
+                        <img id="modalMainImage" src="" alt="Game Preview" class="w-full h-full object-cover transition-opacity duration-500">
+                        <div class="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-t from-black/40 to-transparent"></div>
+                    </div>
+                    <div class="px-4 mb-6 flex items-start space-x-3">
+                         <div class="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border border-gray-200 dark:border-gray-600 shadow-sm">
+                             <img id="modalMiniIcon" src="" alt="Game Icon" class="w-full h-full object-cover">
+                         </div>
+                         <div class="pt-1">
+                             <h2 id="modalTitle" class="text-2xl font-bold leading-tight">...</h2>
+                             <p id="modalDeveloper" class="text-gray-500 dark:text-gray-400 text-sm font-medium mt-0.5">By Xtra_Damage</p>
+                         </div>
+                    </div>
+                    <div class="px-4 mb-6">
+                        <div class="grid grid-cols-4 gap-2 text-center mb-4 divide-x divide-gray-200 dark:divide-gray-700">
+                            <div>
+                                <div id="modalRatingText" class="text-lg font-bold">100%</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Rating</div>
+                            </div>
+                            <div>
+                                <div id="modalActiveText" class="text-lg font-bold">0</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Active</div>
+                            </div>
+                            <div>
+                                <div id="modalAgeText" class="text-lg font-bold">5+</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Age</div>
+                            </div>
+                            <div>
+                                <div id="modalMaturityText" class="text-lg font-bold truncate px-1">Mild</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Maturity</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3 bg-gray-100 dark:bg-[#2b2d35] p-3 rounded-xl mb-6 shadow-inner">
+                            <svg class="w-5 h-5 text-gray-800 dark:text-white fill-current" viewBox="0 0 24 24"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-1.91l-.01-.01L23 10z"/></svg>
+                            <div class="flex-1 h-2 bg-gray-300 dark:bg-gray-600 rounded-full overflow-hidden">
+                                <div id="modalRatingBar" class="h-full bg-green-500 rounded-full" style="width: 0%;"></div>
+                            </div>
+                            <span id="modalRatingBarText" class="text-sm font-bold min-w-[3rem] text-right">100%</span>
+                        </div>
+                        <div class="bg-gray-50 dark:bg-[#23252b] rounded-xl p-4 space-y-3 text-sm shadow-sm border border-gray-100 dark:border-gray-700">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-500 dark:text-gray-400 font-medium">Content Maturity</span>
+                                <span id="modalMaturityDetail" class="flex items-center font-semibold">Mild <svg class="w-4 h-4 ml-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></span>
+                            </div>
+                            <div class="w-full h-[1px] bg-gray-200 dark:bg-gray-700"></div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-500 dark:text-gray-400 font-medium">Age Guideline</span>
+                                <span id="modalAgeDetail" class="font-semibold">5+</span>
+                            </div>
+                             <div class="w-full h-[1px] bg-gray-200 dark:bg-gray-700"></div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-500 dark:text-gray-400 font-medium">Developer</span>
+                                <a href="https://www.roblox.com/users/8125028544/profile" target="_blank" rel="noopener noreferrer" class="font-semibold flex items-center text-blue-600 dark:text-blue-400 hover:underline">
+                                    Xtra_Damage
+                                    <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                </a>
+                            </div>
+                             <div class="w-full h-[1px] bg-gray-200 dark:bg-gray-700"></div>
+                             <div class="flex justify-between items-center">
+                                <span class="text-gray-500 dark:text-gray-400 font-medium">Server Size</span>
+                                <span id="modalServerSize" class="font-semibold">8</span>
+                            </div>
+                             <div class="w-full h-[1px] bg-gray-200 dark:bg-gray-700"></div>
+                             <div class="flex justify-between items-center">
+                                <span class="text-gray-500 dark:text-gray-400 font-medium">Created</span>
+                                <span id="modalCreated" class="font-semibold">...</span>
+                            </div>
+                             <div class="w-full h-[1px] bg-gray-200 dark:bg-gray-700"></div>
+                             <div class="flex justify-between items-center">
+                                <span class="text-gray-500 dark:text-gray-400 font-medium">Updated</span>
+                                <span id="modalUpdated" class="font-semibold">...</span>
+                            </div>
+                             <div class="w-full h-[1px] bg-gray-200 dark:bg-gray-700"></div>
+                             <div class="flex justify-between items-center">
+                                <span class="text-gray-500 dark:text-gray-400 font-medium">Voice Chat</span>
+                                <span id="modalVoiceChat" class="font-semibold">...</span>
+                            </div>
+                             <div class="w-full h-[1px] bg-gray-200 dark:bg-gray-700"></div>
+                             <div class="flex justify-between items-center">
+                                <span class="text-gray-500 dark:text-gray-400 font-medium">Camera</span>
+                                <span id="modalCamera" class="font-semibold">...</span>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- 2. Контейнер для МИНИ-ИГРЫ -->
+                <div id="rhythmGameContainer" class="hidden flex-1 p-4 md:p-6 pb-24 text-white dark:text-white overflow-y-auto no-scrollbar">
+                    
+                    <div class="bg-gray-700 dark:bg-gray-800 p-6 md:p-8 rounded-2xl shadow-2xl w-full max-w-md text-center border border-gray-600 dark:border-gray-700 mx-auto">
+        
+                        <h1 class="text-3xl font-bold mb-4 text-cyan-400">Doolcoin Farm</h1>
+                        
+                        <div class="mb-8">
+                            <span class="text-lg text-gray-300 dark:text-gray-400">Đoolcoin (Текущая сессия)</span>
+                            <div id="gameScore" class="text-6xl font-bold text-white">0</div>
+                        </div>
+
+                        <div class="relative w-full h-20 mb-8">
+                            <div id="arrow" class="absolute top-0 text-3xl text-cyan-400" style="left: 0;">▼</div>
+                            <div id="track" class="absolute top-10 left-0 w-full h-4 bg-gray-600 dark:bg-gray-700 rounded-full overflow-hidden">
+                                <div id="target" class="absolute h-full bg-green-500 rounded-full"></div>
+                            </div>
+                        </div>
+
+                        <button id="hitButton" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg text-xl transition duration-200 focus:outline-none focus:ring-4 focus:ring-blue-300 shadow-lg">
+                            НАЖАТЬ!
+                        </button>
+
+                        <button id="saveGameScoreButton" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-200 focus:outline-none focus:ring-4 focus:ring-gray-400 shadow-lg mt-4">
+                            Сохранить очки
+                        </button>
+
+                        <div id="gameMessage" class="mt-4 h-6 text-lg font-medium"></div>
+                        
+                        <!-- БЛОК: Магазин и Инвентарь -->
+                        <div class="w-full h-px bg-gray-600 dark:bg-gray-900 my-6"></div>
+
+                        <!-- Магазин -->
+                        <div>
+                            <h2 class="text-2xl font-bold mb-4 text-cyan-400">NFT Магазин</h2>
+                            <button id="buyNftButton" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-200 focus:outline-none focus:ring-4 focus:ring-blue-300 shadow-lg">
+                                Купить NFT (Цена: 100 Đ)
+                            </button>
+                            <div id="buyNftMessage" class="mt-4 h-6 text-lg font-medium"></div>
+                        </div>
+
+                        <!-- Разделитель -->
+                        <div class="w-full h-px bg-gray-600 dark:bg-gray-900 my-6"></div>
+
+                        <!-- Инвентарь -->
+                        <div>
+                            <h2 class="text-2xl font-bold mb-4 text-cyan-400">Мой Инвентарь</h2>
+                            <div id="nftInventoryGrid" class="grid grid-cols-3 gap-4">
+                                <!-- NFT будут рендериться здесь -->
+                            </div>
+                            <p id="emptyInventoryMessage" class="text-gray-400 text-center hidden mt-4">Инвентарь пуст.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Нижняя панель с кнопкой ИГРАТЬ -->
+                <div id="modalBottomBar" class="absolute bottom-0 left-0 right-0 p-4 bg-white/95 dark:bg-[#1b1d24]/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-700 z-20 md:rounded-b-xl flex-shrink-0">
+                    <div class="flex space-x-3 relative">
+                         <button onclick="toggleContextMenu(event)" class="p-3 bg-gray-100 dark:bg-gray-700 rounded-xl text-gray-800 dark:text-white transition hover:bg-gray-200 dark:hover:bg-gray-600 border border-transparent active:scale-95">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
+                            </svg>
+                         </button>
+                         <a id="modalPlayBtn" href="#" target="_blank" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl flex items-center justify-center text-xl transition-all shadow-lg hover:shadow-green-500/30 active:scale-[0.98]">
+                             <div class="w-0 h-0 border-t-[10px] border-t-transparent border-l-[16px] border-l-white border-b-[10px] border-b-transparent ml-1"></div>
+                         </a>
+                    </div>
+                </div>
+
+                <!-- ВСПЛЫВАЮЩЕЕ МЕНЮ "ТРИ ТОЧКИ" -->
+                <div id="contextMenu" class="hidden absolute bottom-20 left-4 w-64 bg-white dark:bg-[#2b2d35] rounded-xl shadow-2xl overflow-hidden z-30 ring-1 ring-black/5 dark:ring-white/10 origin-bottom-left animate-fade-in-fast">
+                    <nav class="p-2 space-y-1">
+                        <button id="copyLinkBtn" onclick="copyGameLink(event)" class="w-full flex items-center space-x-3 px-3 py-3 text-left text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600/50 rounded-lg transition-colors group">
+                            <div class="p-1.5 bg-gray-100 dark:bg-gray-700 rounded-md group-hover:bg-white dark:group-hover:bg-gray-600 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 dark:text-gray-400 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                            </div>
+                            <span id="copyLinkText" class="font-medium text-sm">Скопировать ссылку</span>
+                        </button>
+                        
+                        <a id="mainServerLink" href="#" target="_blank" rel="noopener noreferrer" class="flex items-center space-x-3 px-3 py-3 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600/50 rounded-lg transition-colors group" onclick="closeContextMenu()">
+                            <div class="p-1.5 bg-gray-100 dark:bg-gray-700 rounded-md group-hover:bg-white dark:group-hover:bg-gray-600 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 dark:text-gray-400 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                            </div>
+                            <span class="font-medium text-sm">Зайти на гл. сервер</span>
+                        </a>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!--          JavaScript Логика (ИЗМЕНЕНА)      -->
+    <!-- ========================================== -->
+    <script>
+        // ===========================================
+        // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ И КОНСТАНТЫ
+        // ===========================================
+        
+        // --- Переменные состояния ---
+        let currentGameUrl = '';
+        let currentUsername = null;
+        let currentPreviewNftId = null;
+
+        // --- Ключи для localStorage ---
+        const userKey = 'doolcoinCurrentUser';
+        const totalScoreKey = 'doolcoinTotalScore'; // префикс
+        const inventoryKey = 'doolcoinInventory'; // префикс
+        const avatarKey = 'doolcoinAvatar'; // префикс
+
+        // --- Элементы UI ---
+        const loginModal = document.getElementById('loginModal');
+        const loginMessage = document.getElementById('loginMessage');
+        const loginButton = document.getElementById('loginButton');
+        const profileContainer = document.getElementById('profileContainer');
+        const profileAvatar = document.getElementById('profileAvatar');
+        const profileTitle = document.getElementById('profileTitle');
+        const profileUsername = document.getElementById('profileUsername');
+        
+        const modalMainContent = document.getElementById('modalMainContent');
+        const rhythmGameContainer = document.getElementById('rhythmGameContainer');
+        const modalBottomBar = document.getElementById('modalBottomBar');
+        const modalContentWrapper = document.getElementById('modalContentWrapper');
+        const previewModal = document.getElementById('previewModal');
+        const modalHandle = document.getElementById('modalHandle'); 
+        
+        const nftPreviewModal = document.getElementById('nftPreviewModal');
+        const previewSvgContainer = document.getElementById('previewSvgContainer');
+        const previewNftId = document.getElementById('previewNftId');
+
+        // --- Данные игр (без изменений) ---
+        const game1Data = {
+            title: "ALONE [Demo]", developer: "Xtra_Damage",
+            imgSrc: "https://tr.rbxcdn.com/180DAY-3f44115ea3120d2fa304e109bf14655b/256/256/Image/Webp/noFilter",
+            previewSrc: "https://tr.rbxcdn.com/180DAY-316d49fee8e4451806d2d1bcd48caf84/768/432/Image/Png/noFilter", 
+            gameUrl: "https://www.roblox.com/games/127865574897839/ALONE-Demo",
+            serverUrl: "https://www.roblox.com/share?code=bd68c99795802f4cb80a291b6af62e4d&type=Server",
+            stats: { rating: 100, active: "1", age: "5+", maturity: "Mild" },
+            created: "11/1/2025", updated: "11/17/2025", serverSize: 8,
+            voiceChat: "Supported", camera: "Supported"
+        };
+        const game2Data = {
+            title: "Untitled Game", developer: "Xtra_Damage",
+            imgSrc: "https://tr.rbxcdn.com/180DAY-2128aca4b7a6d89c113459092bf5b66e/150/150/Image/Webp/noFilter",
+            previewSrc: "https://tr.rbxcdn.com/180DAY-5f0c563454ec7cd0a6f01215024a9bb6/768/432/Image/Webp/noFilter", 
+            gameUrl: "https://www.roblox.com/games/97857991921270/Untitled-Game",
+            serverUrl: "https://www.roblox.com/share?code=4e8b6ecb1adf1f4da5d137ae67c19c40&type=Server",
+            stats: { rating: 100, active: "0", age: "5+", maturity: "Minimal" },
+            created: "3/15/2025", updated: "11/5/2025", serverSize: 10,
+            voiceChat: "Supported", camera: "Not Supported"
+        };
+        const rhythmGameData = {
+            isGame: true, title: "Ловец Ритма", developer: "Xtra_Damage",
+            imgSrc: "", previewSrc: "", gameUrl: "#", serverUrl: "#"
+        };
+
+        
+        // ===========================================
+        // НОВАЯ ЛОГИКА: АВТОРИЗАЦИЯ (ВХОД)
+        // ===========================================
+
+        // 1. Проверяем состояние входа при загрузке
+        document.addEventListener('DOMContentLoaded', checkLoginState);
+
+        function checkLoginState() {
+            currentUsername = localStorage.getItem(userKey);
+            if (currentUsername) {
+                loadUserData(currentUsername);
+            } else {
+                loginModal.classList.remove('hidden');
+                profileContainer.classList.add('hidden');
+            }
+        }
+
+        // 2. Обработка нажатия кнопки "Войти"
+        async function handleLogin() {
+            const usernameInput = document.getElementById('robloxUsername');
+            const username = usernameInput.value.trim();
+            if (!username) {
+                showLoginError("Пожалуйста, введите никнейм.");
+                return;
+            }
+
+            loginButton.disabled = true;
+            loginButton.textContent = "Загрузка...";
+            showLoginError("", "text-gray-500");
+            
+            try {
+                // Используем прокси roproxy.com для обхода CORS
+                // Шаг 1: Получаем UserID по никнейму
+                const userResponse = await fetch('https://users.roproxy.com/v1/usernames/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ usernames: [username], excludeBannedUsers: true })
+                });
+
+                if (!userResponse.ok) throw new Error('Network error getting user ID');
+                
+                const userData = await userResponse.json();
+                if (!userData.data || userData.data.length === 0) {
+                    throw new Error("Пользователь не найден.");
+                }
+                
+                const userId = userData.data[0].id;
+                const foundUsername = userData.data[0].name; // Используем правильный регистр
+
+                // Шаг 2: Получаем аватарку по UserID
+                const avatarResponse = await fetch(`https://thumbnails.roproxy.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png`);
+                
+                if (!avatarResponse.ok) throw new Error('Network error getting avatar');
+
+                const avatarData = await avatarResponse.json();
+                const imageUrl = avatarData.data[0].imageUrl;
+
+                // 3. Успешный вход
+                loginSuccess(foundUsername, imageUrl);
+
+            } catch (error) {
+                showLoginError(error.message || "Ошибка входа.");
+                loginButton.disabled = false;
+                loginButton.textContent = "Войти";
+            }
+        }
+
+        // 3. Вспомогательная функция при успехе
+        function loginSuccess(username, imageUrl) {
+            currentUsername = username;
+            localStorage.setItem(userKey, username);
+            localStorage.setItem(`${avatarKey}_${username}`, imageUrl); // Кэшируем аватарку
+            
+            loadUserData(username); // Загружаем данные
+            loginModal.classList.add('hidden');
+        }
+
+        // 4. Загрузка данных пользователя в UI
+        function loadUserData(username) {
+            const avatarUrl = localStorage.getItem(`${avatarKey}_${username}`);
+            if (avatarUrl) {
+                profileAvatar.src = avatarUrl;
+            }
+            profileTitle.textContent = username;
+            profileUsername.textContent = `@${username}`;
+            
+            loadTotalScore(); // Загружаем счет (теперь она знает о currentUsername)
+            profileContainer.classList.remove('hidden');
+            loginButton.disabled = false;
+            loginButton.textContent = "Войти";
+        }
+
+        // 5. Обработка выхода
+        function handleLogout() {
+            localStorage.removeItem(userKey);
+            currentUsername = null;
+            profileContainer.classList.add('hidden');
+            loginModal.classList.remove('hidden');
+        }
+
+        // 6. Показать ошибку входа
+        function showLoginError(message, color = 'text-red-500') {
+            loginMessage.textContent = message;
+            loginMessage.className = `text-center text-sm h-5 ${color} dark:${color.replace('500', '400')}`;
+        }
+
+
+        // ===========================================
+        // ЛОГИКА МОДАЛЬНОГО ОКНА (Игры)
+        // ===========================================
+        function openGameModal(gameData) {
+            modalContentWrapper.classList.remove('modal-minimized');
+
+            if (gameData.isGame) {
+                currentGameUrl = '#'; 
+                modalMainContent.classList.add('hidden');
+                rhythmGameContainer.classList.remove('hidden');
+                modalBottomBar.classList.add('hidden');
+                document.getElementById('modalTitle').innerText = gameData.title;
+                document.getElementById('modalDeveloper').innerText = "By " + currentUsername; // Используем имя пользователя
+                initRhythmGame();
+                initNftShop(); 
+
+            } else {
+                currentGameUrl = gameData.gameUrl;
+                modalMainContent.classList.remove('hidden');
+                rhythmGameContainer.classList.add('hidden');
+                modalBottomBar.classList.remove('hidden');
+                document.getElementById('modalTitle').innerText = gameData.title;
+                // Имя разработчика в превью игры оставляем статичным
+                document.getElementById('modalDeveloper').innerText = "By Xtra_Damage"; 
+                document.getElementById('modalMiniIcon').src = gameData.imgSrc;
+                document.getElementById('modalMainImage').src = gameData.previewSrc || gameData.imgSrc;
+                
+                const rating = gameData.stats.rating; 
+                document.getElementById('modalRatingText').innerText = rating + '%';
+                document.getElementById('modalRatingBarText').innerText = rating + '%';
+                setTimeout(() => {
+                    document.getElementById('modalRatingBar').style.width = rating + '%';
+                }, 100); 
+
+                document.getElementById('modalActiveText').innerText = gameData.stats.active;
+                document.getElementById('modalAgeText').innerText = gameData.stats.age;
+                document.getElementById('modalMaturityText').innerText = gameData.stats.maturity;
+                document.getElementById('modalMaturityDetail').innerHTML = `${gameData.stats.maturity} <svg class="w-4 h-4 ml-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>`;
+                document.getElementById('modalAgeDetail').innerText = gameData.stats.age;
+                document.getElementById('modalServerSize').innerText = gameData.serverSize;
+                document.getElementById('modalCreated').innerText = gameData.created;
+                document.getElementById('modalUpdated').innerText = gameData.updated;
+                document.getElementById('modalVoiceChat').innerText = gameData.voiceChat;
+                document.getElementById('modalCamera').innerText = gameData.camera;
+                document.getElementById('modalPlayBtn').href = gameData.gameUrl;
+                document.getElementById('mainServerLink').href = gameData.serverUrl;
+            }
+            previewModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeGameModal() {
+            previewModal.classList.add('hidden');
+            document.body.style.overflow = 'auto'; 
+            closeContextMenu();
+            modalContentWrapper.classList.remove('modal-minimized');
+            document.getElementById('modalRatingBar').style.width = '0%';
+            
+            if(isGameActive) {
+                resetRhythmGame();
+            }
+        }
+
+        // --- Логика Сворачивания / Разворачивания (без изменений) ---
+        function toggleModalHeight() {
+            if (window.innerWidth >= 768) {
+                modalContentWrapper.classList.toggle('modal-minimized');
+            }
+        }
+        
+        // --- ЛОГИКА ПЕРЕТАСКИВАНИЯ (Drag) (без изменений) ---
+        let isDragging = false;
+        let startY = 0;
+        let startTransform = 0;
+        let minimizedY = 0;
+        let threshold = 80;
+
+        modalHandle.addEventListener('mousedown', startDrag);
+        modalHandle.addEventListener('touchstart', startDrag, { passive: false }); 
+        window.addEventListener('mousemove', drag);
+        window.addEventListener('touchmove', drag, { passive: false });
+        window.addEventListener('mouseup', endDrag);
+        window.addEventListener('touchend', endDrag);
+        window.addEventListener('touchcancel', endDrag);
+
+        function startDrag(e) {
+            if (window.innerWidth >= 768) return;
+            if (e.type === 'mousedown') {
+                e.preventDefault();
+            }
+            isDragging = true;
+            startY = (e.touches ? e.touches[0].clientY : e.clientY);
+            const computedStyle = getComputedStyle(modalContentWrapper);
+            const transform = new DOMMatrix(computedStyle.transform);
+            startTransform = transform.m42;
+            minimizedY = modalContentWrapper.parentElement.clientHeight - 120; 
+            modalContentWrapper.style.transition = 'none';
+        }
+
+        function drag(e) {
+            if (!isDragging || window.innerWidth >= 768) return;
+            e.preventDefault(); 
+            let currentY = (e.touches ? e.touches[0].clientY : e.clientY);
+            let deltaY = currentY - startY;
+            let newTransform = startTransform + deltaY;
+            if (newTransform < 0) {
+                newTransform = 0;
+            }
+            if (newTransform > minimizedY) {
+                newTransform = minimizedY;
+            }
+            modalContentWrapper.style.transform = `translateY(${newTransform}px)`;
+        }
+
+        function endDrag(e) {
+            if (!isDragging || window.innerWidth >= 768) return;
+            isDragging = false;
+            modalContentWrapper.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+            const currentTransform = new DOMMatrix(getComputedStyle(modalContentWrapper).transform).m42;
+            modalContentWrapper.style.transform = '';
+            if (modalContentWrapper.classList.contains('modal-minimized')) {
+                if (currentTransform < (minimizedY - threshold)) {
+                    modalContentWrapper.classList.remove('modal-minimized');
+                } else {
+                    modalContentWrapper.classList.add('modal-minimized');
+                }
+            } else {
+                if (currentTransform > threshold) {
+                    modalContentWrapper.classList.add('modal-minimized');
+                } else {
+                    modalContentWrapper.classList.remove('modal-minimized');
+                }
+            }
+        }
+
+
+        // --- Меню "Три Точки" --- (без изменений)
+        function toggleContextMenu(event) {
+            event.stopPropagation(); 
+            const menu = document.getElementById('contextMenu');
+            menu.classList.toggle('hidden');
+        }
+
+        function closeContextMenu() {
+            const menu = document.getElementById('contextMenu');
+            if (!menu.classList.contains('hidden')) {
+                menu.classList.add('hidden');
+            }
+            setTimeout(() => {
+                 document.getElementById('copyLinkText').innerText = 'Скопировать ссылку';
+            }, 300);
+        }
+
+        function copyGameLink(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (currentGameUrl === '#') {
+                document.getElementById('copyLinkText').innerText = 'Неприменимо';
+                setTimeout(closeContextMenu, 1000);
+                return;
+            }
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(currentGameUrl).then(() => {
+                    showCopySuccess();
+                }).catch(err => {
+                    console.error('Clipboard API failed, trying execCommand', err);
+                    fallbackCopyTextToClipboard(currentGameUrl);
+                });
+            } else {
+                fallbackCopyTextToClipboard(currentGameUrl);
+            }
+            setTimeout(closeContextMenu, 1000);
+        }
+
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            textArea.style.opacity = "0";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showCopySuccess();
+            } catch (err)
+             {
+                console.error('Fallback: Oops, unable to copy', err);
+                document.getElementById('copyLinkText').innerText = 'Ошибка!';
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function showCopySuccess() {
+            const textSpan = document.getElementById('copyLinkText');
+            textSpan.innerText = '✅ Скопировано!';
+            textSpan.classList.add('text-green-600', 'dark:text-green-400');
+            
+            setTimeout(() => {
+                textSpan.innerText = 'Скопировать ссылку';
+                textSpan.classList.remove('text-green-600', 'dark:text-green-400');
+            }, 2000);
+        }
+
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('contextMenu');
+            const button = event.target.closest('div[onclick="toggleContextMenu(event)"]'); 
+            if (!menu.classList.contains('hidden') && !menu.contains(event.target) && !button) {
+                closeContextMenu();
+            }
+        });
+
+
+        // ===========================================
+        // ЛОГИКА МИНИ-ИГРЫ (РЕФАКТОРИНГ ХРАНИЛИЩА)
+        // ===========================================
+        
+        let gameArrow, gameTarget, gameHitButton, gameScoreDisplay, gameMessage;
+        let gameScore = 0; 
+        let gameCurrentAnimationDuration = 2; 
+        let isGameActive = false; 
+
+        let currentPointValue = 1; 
+        const totalScoreValueDisplay = document.getElementById('totalScoreValue'); 
+        
+        const gameTargetConfig = {
+            minWidthPercent: 8,  
+            maxWidthPercent: 30, 
+        };
+        let currentGameTargetWidth = gameTargetConfig.maxWidthPercent;
+
+        // --- ИЗМЕНЕНИЕ: Все функции хранилища теперь зависят от currentUsername ---
+        function loadTotalScore() {
+            if (!currentUsername) return 0;
+            const savedScore = localStorage.getItem(`${totalScoreKey}_${currentUsername}`) || '0';
+            totalScoreValueDisplay.textContent = `Đoolcoin: ${savedScore}`;
+            return parseInt(savedScore, 10);
+        }
+
+        function saveCurrentGameScore() {
+            if (!isGameActive || !currentUsername) return;
+
+            if (gameScore === 0) {
+                gameMessage.textContent = "Нечего сохранять!";
+                gameMessage.classList.remove('text-green-500');
+                gameMessage.classList.add('text-red-500');
+                setTimeout(() => { if(gameMessage) gameMessage.textContent = ""; }, 1500);
+                return;
+            }
+
+            let currentTotal = loadTotalScore(); 
+            let newTotal = currentTotal + gameScore;
+            
+            localStorage.setItem(`${totalScoreKey}_${currentUsername}`, newTotal); // Сохраняем для юзера
+            totalScoreValueDisplay.textContent = `Đoolcoin: ${newTotal}`; 
+            
+            gameMessage.textContent = `Сохранено +${gameScore}!`;
+            gameMessage.classList.remove('text-red-500');
+            gameMessage.classList.add('text-green-500');
+            
+            gameScore = 0;
+            currentPointValue = 1;
+            currentGameTargetWidth = gameTargetConfig.maxWidthPercent;
+            gameScoreDisplay.textContent = '0';
+            
+            setTimeout(() => { if(gameMessage) gameMessage.textContent = ""; }, 1500);
+        }
+        // --- КОНЕЦ РЕФАКТОРИНГА ХРАНИЛИЩА ---
+
+
+        function initRhythmGame() {
+            if (isGameActive) return; 
+            gameArrow = document.querySelector('#rhythmGameContainer #arrow');
+            gameTarget = document.querySelector('#rhythmGameContainer #target');
+            gameHitButton = document.querySelector('#rhythmGameContainer #hitButton');
+            gameScoreDisplay = document.querySelector('#rhythmGameContainer #gameScore');
+            gameMessage = document.querySelector('#rhythmGameContainer #gameMessage');
+            
+            document.getElementById('saveGameScoreButton').onclick = saveCurrentGameScore;
+
+            resetRhythmGame(); 
+            gameHitButton.onclick = checkGameHit; 
+            isGameActive = true;
+            randomizeGameTarget(); 
+            gameArrow.style.animationPlayState = 'running'; 
+        }
+        
+        function resetRhythmGame() {
+            isGameActive = false;
+            gameScore = 0;
+            gameCurrentAnimationDuration = 2; 
+            currentPointValue = 1; 
+            currentGameTargetWidth = gameTargetConfig.maxWidthPercent; 
+            
+            if (gameArrow) {
+                gameArrow.style.animationDuration = `${gameCurrentAnimationDuration}s`;
+                gameArrow.style.animationPlayState = 'paused'; 
+                gameArrow.style.left = '0'; 
+            }
+            if (gameScoreDisplay) {
+                gameScoreDisplay.textContent = '0';
+            }
+            if (gameMessage) {
+                gameMessage.textContent = '';
+            }
+        }
+
+        function randomizeGameTarget() {
+            if (!isGameActive) return;
+            const newWidth = currentGameTargetWidth; 
+            const maxLeft = 100 - newWidth;
+            const newLeft = Math.random() * maxLeft;
+            
+            gameTarget.style.width = `${newWidth}%`;
+            gameTarget.style.left = `${newLeft}%`;
+        }
+
+        function checkGameHit() {
+            if (!isGameActive) return;
+            const arrowRect = gameArrow.getBoundingClientRect();
+            const targetRect = gameTarget.getBoundingClientRect();
+            const arrowCenter = arrowRect.left + (arrowRect.width / 2);
+            const targetStart = targetRect.left;
+            const targetEnd = targetRect.right;
+            
+            if (arrowCenter >= targetStart && arrowCenter <= targetEnd) {
+                const pointsEarned = currentPointValue; 
+                gameScore += pointsEarned; 
+                currentPointValue *= 2; 
+                
+                gameMessage.textContent = `Отлично! +${pointsEarned}`;
+                gameMessage.classList.remove('text-red-500');
+                gameMessage.classList.add('text-green-500');
+                
+                gameCurrentAnimationDuration = Math.max(0.4, gameCurrentAnimationDuration * 0.95); 
+                gameArrow.style.animationDuration = `${gameCurrentAnimationDuration}s`;
+                
+                currentGameTargetWidth = Math.max(gameTargetConfig.minWidthPercent, currentGameTargetWidth * 0.95);
+
+            } else {
+                gameScore = 0; 
+                currentPointValue = 1; 
+                currentGameTargetWidth = gameTargetConfig.maxWidthPercent; 
+                
+                gameMessage.textContent = "Мимо!";
+                gameMessage.classList.remove('text-green-500');
+                gameMessage.classList.add('text-red-500');
+                
+                gameCurrentAnimationDuration = 2; 
+                gameArrow.style.animationDuration = `${gameCurrentAnimationDuration}s`;
+            }
+            
+            gameScoreDisplay.textContent = `${gameScore}`;
+            
+            randomizeGameTarget(); 
+            
+            setTimeout(() => {
+                if(gameMessage) gameMessage.textContent = "";
+            }, 800); 
+        }
+
+
+        // ===========================================
+        // ЛОГИКА: NFT И ИНВЕНТАРЬ (РЕФАКТОРИНГ + НОВЫЕ ФУНКЦИИ)
+        // ===========================================
+        
+        const nftPrice = 100; // Цена одного NFT
+        let nftInventoryGrid, emptyInventoryMessage, buyNftMessage;
+
+        // Вызывается при открытии модального окна игры
+        function initNftShop() {
+            nftInventoryGrid = document.getElementById('nftInventoryGrid');
+            emptyInventoryMessage = document.getElementById('emptyInventoryMessage');
+            buyNftMessage = document.getElementById('buyNftMessage');
+            document.getElementById('buyNftButton').onclick = buyNFT;
+            renderInventory();
+        }
+
+        // Генерирует уникальный ID
+        function generateUniqueID() {
+            return crypto.randomUUID();
+        }
+
+        // --- Функции генерации фракталов (без изменений) ---
+        function randomHSLColor() {
+            const h = Math.floor(Math.random() * 360);
+            const s = Math.floor(Math.random() * 40) + 60; 
+            const l = Math.floor(Math.random() * 40) + 30; 
+            return { h, s, l };
+        }
+        function varyColor(hsl) {
+            const h = (hsl.h + Math.floor(Math.random() * 40) - 20) % 360;
+            const s = Math.min(100, Math.max(50, hsl.s + Math.floor(Math.random() * 20) - 10));
+            const l = Math.min(80, Math.max(20, hsl.l + Math.floor(Math.random() * 20) - 10));
+            return { h: h < 0 ? h + 360 : h, s, l };
+        }
+        function randomRange(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+        function drawBranch(x, y, angle, length, depth, baseColor, strokeWidth) {
+            if (depth === 0 || length < 1) { 
+                return ''; 
+            }
+            const rad = angle * (Math.PI / 180);
+            const x2 = x + Math.cos(rad) * length;
+            const y2 = y + Math.sin(rad) * length;
+            const newColor = varyColor(baseColor);
+            const colorStr = `hsl(${newColor.h}, ${newColor.s}%, ${newColor.l}%)`;
+            
+            let svgString = `<line x1="${x}" y1="${y}" x2="${x2}" y2="${y2}" stroke="${colorStr}" stroke-width="${strokeWidth}" stroke-linecap="round" opacity="0.8" />`;
+            const branches = Math.floor(randomRange(1, 4)); 
+            
+            for (let i = 0; i < branches; i++) {
+                const newAngle = angle + randomRange(-50, 50); 
+                const newLength = length * randomRange(0.7, 0.9); 
+                const newStrokeWidth = Math.max(0.2, strokeWidth * 0.85); 
+                svgString += drawBranch(x2, y2, newAngle, newLength, depth - 1, newColor, newStrokeWidth);
+            }
+            return svgString;
+        }
+        function generateRandomSVG() {
+            let svg = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">';
+            const bgH = Math.floor(Math.random() * 360);
+            const bgS = Math.floor(randomRange(10, 30));
+            const bgL = Math.floor(randomRange(5, 15));
+            const bgColor = `hsl(${bgH}, ${bgS}%, ${bgL}%)`;
+            svg += `<rect width="100" height="100" fill="${bgColor}" />`;
+            const startX = 50; 
+            const startY = 50;
+            const baseDepth = Math.floor(randomRange(6, 9)); 
+            const baseLength = randomRange(8, 12); 
+            const baseStrokeWidth = randomRange(1.5, 3); 
+            const numTrunks = Math.floor(randomRange(4, 9)); 
+            const baseColor = randomHSLColor(); 
+            for (let i = 0; i < numTrunks; i++) {
+                const startAngle = randomRange(0, 360); 
+                svg += drawBranch(startX, startY, startAngle, baseLength, baseDepth, baseColor, baseStrokeWidth);
+            }
+            svg += '</svg>';
+            return svg;
+        }
+
+        // --- ИЗМЕНЕНИЕ: Функции инвентаря теперь зависят от currentUsername ---
+        function loadInventory() {
+            if (!currentUsername) return [];
+            const data = localStorage.getItem(`${inventoryKey}_${currentUsername}`);
+            return data ? JSON.parse(data) : [];
+        }
+
+        function saveInventory(inventory) {
+            if (!currentUsername) return;
+            localStorage.setItem(`${inventoryKey}_${currentUsername}`, JSON.stringify(inventory));
+        }
+
+        // --- ИЗМЕНЕНИЕ: renderInventory теперь добавляет onclick для предпросмотра ---
+        function renderInventory() {
+            if (!nftInventoryGrid) return; 
+
+            const inventory = loadInventory();
+            nftInventoryGrid.innerHTML = ''; 
+
+            if (inventory.length === 0) {
+                emptyInventoryMessage.classList.remove('hidden');
+            } else {
+                emptyInventoryMessage.classList.add('hidden');
+                inventory.forEach(nft => {
+                    const nftCard = document.createElement('div');
+                    // Используем класс .nft-card из <style>
+                    nftCard.className = "nft-card"; 
+                    // Добавляем onclick для вызова предпросмотра
+                    nftCard.setAttribute('onclick', `previewNFT('${nft.id}')`); 
+                    
+                    nftCard.innerHTML = `
+                        <div class="w-full aspect-square rounded-md overflow-hidden border border-gray-700">
+                            ${nft.svg} 
+                        </div>
+                        <p class="text-xs text-gray-400 truncate mt-2" title="${nft.id}">ID: ${nft.id.substring(0, 8)}...</p>
+                    `;
+                    nftInventoryGrid.appendChild(nftCard);
+                });
+            }
+        }
+
+        // --- ИЗМЕНЕНИЕ: buyNFT теперь использует `loadTotalScore` и обновляет localStorage для юзера ---
+        function buyNFT() {
+            if (!currentUsername) return;
+            let currentTotal = loadTotalScore(); 
+
+            if (currentTotal < nftPrice) {
+                buyNftMessage.textContent = "Недостаточно Đoolcoin!";
+                buyNftMessage.classList.remove('text-green-500');
+                buyNftMessage.classList.add('text-red-500');
+                setTimeout(() => { if(buyNftMessage) buyNftMessage.textContent = ""; }, 2000);
+                return;
+            }
+
+            let newTotal = currentTotal - nftPrice;
+            localStorage.setItem(`${totalScoreKey}_${currentUsername}`, newTotal); // Сохраняем для юзера
+            totalScoreValueDisplay.textContent = `Đoolcoin: ${newTotal}`; 
+
+            const newNFT = {
+                id: generateUniqueID(),
+                svg: generateRandomSVG() 
+            };
+
+            let inventory = loadInventory();
+            inventory.push(newNFT);
+            saveInventory(inventory);
+
+            renderInventory(); 
+            buyNftMessage.textContent = "Покупка совершена!";
+            buyNftMessage.classList.remove('text-red-500');
+            buyNftMessage.classList.add('text-green-500');
+            setTimeout(() => { if(buyNftMessage) buyNftMessage.textContent = ""; }, 2000);
+        }
+
+        // ===========================================
+        // НОВЫЕ ФУНКЦИИ: Предпросмотр и Удаление NFT
+        // ===========================================
+
+        function previewNFT(nftId) {
+            currentPreviewNftId = nftId; // Запоминаем ID для удаления
+            const inventory = loadInventory();
+            const nft = inventory.find(n => n.id === nftId);
+
+            if (nft) {
+                previewSvgContainer.innerHTML = nft.svg;
+                previewNftId.textContent = `ID: ${nft.id}`;
+                nftPreviewModal.classList.remove('hidden');
+            }
+        }
+
+        function closeNftPreview() {
+            nftPreviewModal.classList.add('hidden');
+            previewSvgContainer.innerHTML = '';
+            currentPreviewNftId = null; // Сбрасываем ID
+        }
+
+        function deleteNFT() {
+            if (!currentPreviewNftId) return;
+
+            // Простое подтверждение, чтобы избежать случайных кликов
+            if (!confirm("Вы уверены, что хотите удалить этот NFT? Это действие необратимо.")) {
+                return;
+            }
+            
+            let inventory = loadInventory();
+            // Фильтруем инвентарь, убирая NFT с этим ID
+            const newInventory = inventory.filter(n => n.id !== currentPreviewNftId);
+            
+            saveInventory(newInventory); // Сохраняем новый инвентарь
+            renderInventory(); // Перерисовываем сетку в модальном окне игры
+            closeNftPreview(); // Закрываем окно предпросмотра
+        }
+
+    </script>
+
+    <!-- Стили анимаций модального окна (без изменений) -->
+    <style>
+        @keyframes slide-up {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .animate-slide-up {
+            animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        
+        @keyframes fade-in {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        @keyframes fade-in-fast {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .animate-fade-in-fast {
+            animation: fade-in-fast 0.15s ease-out forwards;
+        }
+
+        @media (min-width: 768px) {
+            .md\:animate-fade-in {
+                animation: fade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            }
+        }
+    </style>
 </body>
 </html>
